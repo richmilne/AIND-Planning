@@ -37,10 +37,12 @@ class AirCargoProblem(Problem):
 
     def get_actions(self):
         """
-        This method creates concrete actions (no variables) for all actions in the problem
-        domain action schema and turns them into complete Action objects as defined in the
-        aimacode.planning module. It is computationally expensive to call this method directly;
-        however, it is called in the constructor and the results cached in the `actions_list` property.
+        This method creates concrete actions (no variables) for all actions in
+        the problem domain action schema and turns them into complete Action
+        objects as defined in the aimacode.planning module. It is
+        computationally expensive to call this method directly; however, it is
+        called in the constructor and the results cached in the
+        `actions_list` property.
 
         Returns:
         ----------
@@ -59,8 +61,22 @@ class AirCargoProblem(Problem):
 
             :return: list of Action objects
             """
+            # Action(Load(c, p, a),
+            #    PRECOND: At(c, a) ∧ At(p, a) ∧ Cargo(c) ∧ Plane(p) ∧ Airport(a)
+            #    EFFECT: ¬ At(c, a) ∧ In(c, p))
             loads = []
-            # TODO create all load ground actions from the domain Load action
+            for cargo in self.cargos:
+                for plane in self.planes:
+                    for airport in self.airports:
+                        args = (cargo, airport, plane, airport)
+                        precond = 'At(%s, %s) & At(%s, %s)' % args
+                        effect_add = 'In(%s, %s)' % (cargo, plane)
+                        effect_rem = 'At(%s, %s)' % (cargo, airport)
+                        load = 'Load(%s, %s, %s)' % (cargo, plane, airport)
+
+                        action = Action(expr(load), [expr(precond), []],
+                                        [expr(effect_add), expr(effect_rem)])
+                        loads.append(action)
             return loads
 
         def unload_actions():
@@ -68,8 +84,23 @@ class AirCargoProblem(Problem):
 
             :return: list of Action objects
             """
+            # Action(Unload(c, p, a),
+            #    PRECOND: In(c, p) ∧ At(p, a) ∧ Cargo(c) ∧ Plane(p) ∧ Airport(a)
+            #    EFFECT: At(c, a) ∧ ¬ In(c, p))
             unloads = []
-            # TODO create all Unload ground actions from the domain Unload action
+            for cargo in self.cargos:
+                for plane in self.planes:
+                    for airport in self.airports:
+                        precond = ['In(%s, %s)' % (cargo, plane)]
+                        precond.append('At(%s, %s)' % (plane, airport))
+                        effect_rem = 'In(%s, %s)' % (cargo, plane)
+                        effect_add = 'At(%s, %s)' % (cargo, airport)
+                        unload = 'Unload(%s, %s, %s)' % (cargo, plane, airport)
+                        action = Action(expr(unload),
+                                        [[expr(e) for e in precond], []],
+                                        [expr(effect_add), expr(effect_rem)])
+                        unloads.append(action)
+
             return unloads
 
         def fly_actions():
@@ -77,6 +108,9 @@ class AirCargoProblem(Problem):
 
             :return: list of Action objects
             """
+            # Action(Fly(p, from, to),
+            #    PRECOND: At(p, from) ∧ Plane(p) ∧ Airport(from) ∧ Airport(to)
+            #    EFFECT: ¬ At(p, from) ∧ At(p, to))
             flys = []
             for fr in self.airports:
                 for to in self.airports:
@@ -187,11 +221,63 @@ def air_cargo_p1() -> AirCargoProblem:
     return AirCargoProblem(cargos, planes, airports, init, goal)
 
 
+def cross_product(function, objects1, objects2):
+    products = []
+    for obj1 in objects1:
+        for obj2 in objects2:
+            products.append('%s(%s, %s)' % (function, obj1, obj2))
+    return set(products)
+
+
+def create_problem(cargos, planes, airports, pos_cargos, pos_planes, goals):
+    all_cargos = cross_product('At', cargos, airports)
+    neg_cargos = all_cargos - set(pos_cargos)
+
+    all_planes = cross_product('At', planes, airports)
+    neg_planes = all_planes - set(pos_planes)
+
+    neg_loads = cross_product('In', cargos, planes)
+
+    expr_list = [
+        pos_cargos + pos_planes,
+        sorted(sum([list(n) for n in [neg_cargos, neg_planes, neg_loads]], [])),
+        goals
+    ]
+    pos, neg, goals = [[expr(ex) for ex in exli] for exli in expr_list]
+
+    if 0:
+        for label, obj in [('pos', pos), ('neg', neg), ('goals', goals)]:
+            print()
+            print(label+':')
+            print(type(obj[0]), obj)
+
+    init = FluentState(pos, neg)
+    return AirCargoProblem(cargos, planes, airports, init, goals)
+
+
 def air_cargo_p2() -> AirCargoProblem:
-    # TODO implement Problem 2 definition
-    pass
+    cargos = ['C1', 'C2', 'C3']
+    planes = ['P1', 'P2', 'P3']
+    airports = ['JFK', 'SFO', 'ATL']
+
+    pos_cargos = ['At(C1, SFO)', 'At(C2, JFK)', 'At(C3, ATL)']
+    pos_planes = ['At(P1, SFO)', 'At(P2, JFK)', 'At(P3, ATL)']
+
+    goals = ['At(C1, JFK)', 'At(C2, SFO)', 'At(C3, SFO)']
+
+    args = (cargos, planes, airports, pos_cargos, pos_planes, goals)
+    return create_problem(*args)
 
 
 def air_cargo_p3() -> AirCargoProblem:
-    # TODO implement Problem 3 definition
-    pass
+    cargos = ['C1', 'C2', 'C3', 'C4']
+    planes = ['P1', 'P2']
+    airports = ['JFK', 'SFO', 'ATL', 'ORD']
+
+    pos_cargos = ['At(C1, SFO)', 'At(C2, JFK)', 'At(C3, ATL)', 'At(C4, ORD)']
+    pos_planes = ['At(P1, SFO)', 'At(P2, JFK)']
+
+    goals = ['At(C1, JFK)', 'At(C3, JFK)', 'At(C2, SFO)', 'At(C4, SFO)']
+
+    args = (cargos, planes, airports, pos_cargos, pos_planes, goals)
+    return create_problem(*args)
