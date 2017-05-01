@@ -1,13 +1,9 @@
-from aimacode.logic import PropKB
-from aimacode.planning import Action
+from actions import Action
 from aimacode.search import (
     Node, breadth_first_search, astar_search, depth_first_graph_search,
     uniform_cost_search, greedy_best_first_graph_search, Problem,
 )
-from aimacode.utils import expr
-from lp_utils import (
-    FluentState, encode_state, decode_state
-)
+from lp_utils import encode_state, decode_state
 from my_planning_graph import PlanningGraph
 from run_search import run_search
 
@@ -15,68 +11,49 @@ from functools import lru_cache
 
 
 class HaveCakeProblem(Problem):
-    def __init__(self, initial: FluentState, goal: list):
-        self.state_map = initial.pos + initial.neg
-        Problem.__init__(self, encode_state(initial, self.state_map), goal=goal)
+    def __init__(self, initial, goal: list):
+        pos, neg = initial
+        all_fluents = tuple(sorted(pos+neg))
+        initial_state = encode_state(all_fluents, pos)
+        goal = encode_state(all_fluents, goal)
+
+        self.all_fluents = all_fluents
+        self.initial_state = initial_state
+        Problem.__init__(self, initial_state, goal=goal)
+
         self.actions_list = self.get_actions()
 
     def get_actions(self):
-        precond_pos = [expr("Have(Cake)")]
+        precond_pos = ["Have(Cake)"]
         precond_neg = []
-        effect_add = [expr("Eaten(Cake)")]
-        effect_rem = [expr("Have(Cake)")]
-        eat_action = Action(expr("Eat(Cake)"),
+        effect_add = ["Eaten(Cake)"]
+        effect_rem = ["Have(Cake)"]
+        eat_action = Action("Eat(Cake)", self.all_fluents,
                             [precond_pos, precond_neg],
                             [effect_add, effect_rem])
+
         precond_pos = []
-        precond_neg = [expr("Have(Cake)")]
-        effect_add = [expr("Have(Cake)")]
+        precond_neg = ["Have(Cake)"]
+        effect_add = ["Have(Cake)"]
         effect_rem = []
-        bake_action = Action(expr("Bake(Cake)"),
+        bake_action = Action("Bake(Cake)", self.all_fluents,
                              [precond_pos, precond_neg],
                              [effect_add, effect_rem])
         return [eat_action, bake_action]
 
-    def actions(self, state: str) -> list:  # of Action
+    def actions(self, state: int) -> list:  # of Action
         possible_actions = []
-        kb = PropKB()
-        kb.tell(decode_state(state, self.state_map).pos_sentence())
+
         for action in self.actions_list:
-            is_possible = True
-            for clause in action.precond_pos:
-                if clause not in kb.clauses:
-                    is_possible = False
-            for clause in action.precond_neg:
-                if clause in kb.clauses:
-                    is_possible = False
-            if is_possible:
+            if action.check_precond(state):
                 possible_actions.append(action)
         return possible_actions
 
-    def result(self, state: str, action: Action):
-        new_state = FluentState([], [])
-        old_state = decode_state(state, self.state_map)
-        for fluent in old_state.pos:
-            if fluent not in action.effect_rem:
-                new_state.pos.append(fluent)
-        for fluent in action.effect_add:
-            if fluent not in new_state.pos:
-                new_state.pos.append(fluent)
-        for fluent in old_state.neg:
-            if fluent not in action.effect_add:
-                new_state.neg.append(fluent)
-        for fluent in action.effect_rem:
-            if fluent not in new_state.neg:
-                new_state.neg.append(fluent)
-        return encode_state(new_state, self.state_map)
+    def result(self, state: int, action: Action):
+        return action(state)
 
     def goal_test(self, state: str) -> bool:
-        kb = PropKB()
-        kb.tell(decode_state(state, self.state_map).pos_sentence())
-        for clause in self.goal:
-            if clause not in kb.clauses:
-                return False
-        return True
+        return self.goal & state == self.goal
 
     def h_1(self, node: Node):
         # note that this is not a true heuristic
@@ -100,33 +77,29 @@ class HaveCakeProblem(Problem):
 
 
 def have_cake():
-    def get_init():
-        pos = [expr('Have(Cake)'),
-               ]
-        neg = [expr('Eaten(Cake)'),
-               ]
-        return FluentState(pos, neg)
+    pos = ['Have(Cake)']
+    neg = ['Eaten(Cake)']
+    goal = ['Have(Cake)', 'Eaten(Cake)']
 
-    def get_goal():
-        return [expr('Have(Cake)'),
-                expr('Eaten(Cake)'),
-                ]
-
-    return HaveCakeProblem(get_init(), get_goal())
+    init = (pos, neg)
+    return HaveCakeProblem(init, goal)
 
 
 if __name__ == '__main__':
     p = have_cake()
     print("**** Have Cake example problem setup ****")
-    print("Initial state for this problem is {}".format(p.initial))
+    initial = decode_state(p.all_fluents, p.initial)
+    print("Initial state for this problem is {}".format(initial))
     print("Actions for this domain are:")
     for a in p.actions_list:
-        print('   {}{}'.format(a.name, a.args))
+        print('  ', str(a))
+
     print("Fluents in this problem are:")
-    for f in p.state_map:
+    for f in p.all_fluents:
         print('   {}'.format(f))
+
     print("Goal requirement for this problem are:")
-    for g in p.goal:
+    for g in decode_state(p.all_fluents, p.goal):
         print('   {}'.format(g))
     print()
     print("*** Breadth First Search")
