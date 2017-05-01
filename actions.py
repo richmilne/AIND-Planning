@@ -1,66 +1,80 @@
-"""Planning (Chapters 10-11)
-"""
+from lp_utils import encode_state, action_bitmaps, decode_state
 
-from .utils import Expr
+class Action(object):
+    """Defines an action schema using preconditions and effects
 
+    Use this to describe actions in PDDL. Precondition and effect are both
+    lists with positive and negated literals
 
-class Action:
-    """
-    Defines an action schema using preconditions and effects
-    Use this to describe actions in PDDL
-    action is an Expr where variables are given as arguments(args)
-    Precondition and effect are both lists with positive and negated literals
     Example:
-    precond_pos = [expr("Human(person)"), expr("Hungry(Person)")]
-    precond_neg = [expr("Eaten(food)")]
-    effect_add = [expr("Eaten(food)")]
-    effect_rem = [expr("Hungry(person)")]
-    eat = Action(expr("Eat(person, food)"), [precond_pos, precond_neg], [effect_add, effect_rem])
+    >>> all_fluents = tuple(sorted([
+    ...     "Human(Person)", "Hungry(Person)", "Eaten(Food)"
+    ... ]))
+    >>> precond_pos = ["Human(Person)", "Hungry(Person)"]
+    >>> precond_neg = ["Eaten(Food)"]
+    >>> effect_add = ["Eaten(Food)"]
+    >>> effect_rem = ["Hungry(Person)"]
+    >>> eat = Action("Eat(person, food)", all_fluents,
+    ...              [precond_pos, precond_neg],
+    ...              [effect_add, effect_rem]
+    ... )
+    >>> kb = encode_state(all_fluents, precond_pos)
+    >>> kb = eat(kb)
+    >>> print(decode_state(all_fluents, kb))
+    ['Human(Person)', 'Eaten(Food)']
+
+    Another Example:
+    >>> all_fluents = 'A B C D E'.split()
+    >>> precond_pos = ['C', 'A']
+    >>> precond_neg = ['B']
+    >>> effect_add = ['B', 'D']
+    >>> effect_rem = ['C']
+    >>> precond = [precond_pos, precond_neg]
+    >>> effect = [effect_add, effect_rem]
+
+    >>> action = Action('Test()', all_fluents, precond, effect)
+    >>> kb1 = encode_state(all_fluents, ['A', 'B', 'C'])
+    >>> kb2 = encode_state(all_fluents, ['A',      'C'])
+    >>> action.check_precond(kb1)
+    False
+    >>> action.check_precond(kb2)
+    True
+    >>> kb = action.act(kb2)
+    >>> print(sorted(decode_state(all_fluents, kb)))
+    ['A', 'B', 'D']
     """
+    def __init__(self, name, all_fluents, precond, effect):
+        self.name = name
+        precond = action_bitmaps(all_fluents, *precond)
+        self.pos_bitmap, self.neg_bitmap = precond[:2]
+        effect = action_bitmaps(all_fluents, *effect)
+        self.effect_add, self.effect_rem = effect[0], effect[2]
 
-    def __init__(self, action, precond, effect):
-        self.name = action.op
-        self.args = action.args
-        self.precond_pos = precond[0]
-        self.precond_neg = precond[1]
-        self.effect_add = effect[0]
-        self.effect_rem = effect[1]
-
-    def __call__(self, kb, args):
-        return self.act(kb, args)
+    def __call__(self, kb):
+        return self.act(kb)
 
     def __str__(self):
-        return "{}{!s}".format(self.name, self.args)
+        return self.name
 
-    def substitute(self, e, args):
-        """Replaces variables in expression with their respective Propostional symbol"""
-        new_args = list(e.args)
-        for num, x in enumerate(e.args):
-            for i in range(len(self.args)):
-                if self.args[i] == x:
-                    new_args[num] = args[i]
-        return Expr(e.op, *new_args)
-
-    def check_precond(self, kb, args):
+    def check_precond(self, kb):
         """Checks if the precondition is satisfied in the current state"""
-        # check for positive clauses
-        for clause in self.precond_pos:
-            if self.substitute(clause, args) not in kb.clauses:
-                return False
-        # check for negative clauses
-        for clause in self.precond_neg:
-            if self.substitute(clause, args) in kb.clauses:
-                return False
-        return True
+        # KB - recorded as state bitmap
+        if not (kb & self.pos_bitmap == self.pos_bitmap):
+            return False
+        return kb & self.neg_bitmap == 0
 
-    def act(self, kb, args):
+    def act(self, kb):
         """Executes the action on the state's kb"""
         # check if the preconditions are satisfied
-        if not self.check_precond(kb, args):
+        if not self.check_precond(kb):
             raise Exception("Action pre-conditions not satisfied")
         # remove negative literals
-        for clause in self.effect_rem:
-            kb.retract(self.substitute(clause, args))
+        kb = kb & self.effect_rem
         # add positive literals
-        for clause in self.effect_add:
-            kb.tell(self.substitute(clause, args))
+        kb = kb | self.effect_add
+
+        return kb
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()

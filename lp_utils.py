@@ -1,39 +1,3 @@
-from aimacode.logic import associate
-from aimacode.utils import expr
-
-
-class FluentState():
-    """ state object for planning problems as positive and negative fluents
-
-    """
-
-    def __init__(self, pos_list, neg_list):
-        self.pos = pos_list
-        self.neg = neg_list
-
-    def sentence(self):
-        return expr(conjunctive_sentence(self.pos, self.neg))
-
-    def pos_sentence(self):
-        return expr(conjunctive_sentence(self.pos, []))
-
-
-def conjunctive_sentence(pos_list, neg_list):
-    """ returns expr conjuntive sentence given positive and negative fluent lists
-
-    :param pos_list: list of fluents
-    :param neg_list: list of fluents
-    :return: expr sentence of fluent conjunction
-        e.g. "At(C1, SFO) ∧ ~At(P1, SFO)"
-    """
-    clauses = []
-    for f in pos_list:
-        clauses.append(expr("{}".format(f)))
-    for f in neg_list:
-        clauses.append(expr("~{}".format(f)))
-    return associate('&', clauses)
-
-
 def action_bitmaps(all_fluents: tuple, add_pos, rem_neg):
     """Encode fluent lists as precondition/effect bitmaps.
 
