@@ -105,8 +105,8 @@ class AirCargoProblem(Problem):
                         unloads.append(action)
             return unloads
 
-            def fly_actions():
-                """Create all concrete Fly actions and return a list
+        def fly_actions():
+            """Create all concrete Fly actions and return a list
 
             :return: list of Action objects"""
             # Action(Fly(p, from, to),
