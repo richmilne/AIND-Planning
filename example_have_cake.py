@@ -1,91 +1,43 @@
 from actions import Action
+from planning_problem import PlanningProblem
+from functools import partial
+from run_search import run_search
+
 from aimacode.search import (
     Node, breadth_first_search, astar_search, depth_first_graph_search,
     uniform_cost_search, greedy_best_first_graph_search, Problem,
 )
-from lp_utils import encode_state, decode_state
-from my_planning_graph import PlanningGraph
-from run_search import run_search
-
-from functools import lru_cache
 
 
-class HaveCakeProblem(Problem):
-    def __init__(self, initial, goal: list):
-        pos, neg = initial
-        all_fluents = tuple(sorted(pos+neg))
-        initial_state = encode_state(all_fluents, pos)
-        goal = encode_state(all_fluents, goal)
+def cake_actions(all_fluents):
+    precond_pos = ["Have(Cake)"]
+    precond_neg = []
+    effect_add = ["Eaten(Cake)"]
+    effect_rem = ["Have(Cake)"]
+    eat_action = Action("Eat(Cake)", all_fluents,
+                        [precond_pos, precond_neg],
+                        [effect_add, effect_rem])
 
-        self.all_fluents = all_fluents
-        self.initial_state = initial_state
-        Problem.__init__(self, initial_state, goal=goal)
-
-        self.actions_list = self.get_actions()
-
-    def get_actions(self):
-        precond_pos = ["Have(Cake)"]
-        precond_neg = []
-        effect_add = ["Eaten(Cake)"]
-        effect_rem = ["Have(Cake)"]
-        eat_action = Action("Eat(Cake)", self.all_fluents,
-                            [precond_pos, precond_neg],
-                            [effect_add, effect_rem])
-
-        precond_pos = []
-        precond_neg = ["Have(Cake)"]
-        effect_add = ["Have(Cake)"]
-        effect_rem = []
-        bake_action = Action("Bake(Cake)", self.all_fluents,
-                             [precond_pos, precond_neg],
-                             [effect_add, effect_rem])
-        return [eat_action, bake_action]
-
-    def actions(self, state: int) -> list:  # of Action
-        possible_actions = []
-
-        for action in self.actions_list:
-            if action.check_precond(state):
-                possible_actions.append(action)
-        return possible_actions
-
-    def result(self, state: int, action: Action):
-        return action(state)
-
-    def goal_test(self, state: str) -> bool:
-        return self.goal & state == self.goal
-
-    def h_1(self, node: Node):
-        # note that this is not a true heuristic
-        h_const = 1
-        return h_const
-
-    @lru_cache(maxsize=8192)
-    def h_pg_levelsum(self, node: Node):
-        # uses the planning graph level-sum heuristic calculated
-        # from this node to the goal
-        # requires implementation in PlanningGraph
-        pg = PlanningGraph(self, node.state)
-        pg_levelsum = pg.h_levelsum()
-        return pg_levelsum
-
-    @lru_cache(maxsize=8192)
-    def h_ignore_preconditions(self, node: Node):
-        # not implemented
-        count = 0
-        return count
+    precond_pos = []
+    precond_neg = ["Have(Cake)"]
+    effect_add = ["Have(Cake)"]
+    effect_rem = []
+    bake_action = Action("Bake(Cake)", all_fluents,
+                         [precond_pos, precond_neg],
+                         [effect_add, effect_rem])
+    return [eat_action, bake_action]
 
 
 def have_cake():
     pos = ['Have(Cake)']
     neg = ['Eaten(Cake)']
     goal = ['Have(Cake)', 'Eaten(Cake)']
-
     init = (pos, neg)
-    return HaveCakeProblem(init, goal)
-
+    return PlanningProblem(init, goal, cake_actions)
 
 if __name__ == '__main__':
+    from lp_utils import decode_state
+
     p = have_cake()
     print("**** Have Cake example problem setup ****")
     initial = decode_state(p.all_fluents, p.initial)

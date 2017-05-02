@@ -1,16 +1,13 @@
 from actions import Action
 from planning_problem import PlanningProblem
 from functools import partial
+from run_search import run_search
 
 from aimacode.search import (
     Node, breadth_first_search, astar_search, depth_first_graph_search,
     uniform_cost_search, greedy_best_first_graph_search, Problem,
 )
-from lp_utils import encode_state, decode_state
-from my_planning_graph import PlanningGraph
-from run_search import run_search
 
-from functools import lru_cache, partial
 
 def spare_tire_actions(tires, locations, all_fluents):
     def remove_actions():
@@ -79,6 +76,8 @@ def spare_tire():
 
 
 if __name__ == '__main__':
+    from lp_utils import decode_state
+
     p = spare_tire()
     print("**** Spare Tire example problem setup ****")
     initial = decode_state(p.all_fluents, p.initial)
