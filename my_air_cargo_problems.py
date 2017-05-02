@@ -156,7 +156,7 @@ class AirCargoProblem(Problem):
         return action(state)
 
     def goal_test(self, state: int) -> bool:
-        """ Test the state to see if goal is reached
+        """Test the state to see if goal is reached
 
         :param state: int representing state
         :return: bool"""
