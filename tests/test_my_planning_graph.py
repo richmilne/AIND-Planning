@@ -73,10 +73,7 @@ def create_test_actions(all_fluents):
 
 class TestPlanningGraphMutex(unittest.TestCase):
 
-    fluents = ['Go(here)', 'Go(there)',
-               'At(here)', 'At(there)',
-               'Noop(At(here))', 'Reverse(At(here))'
-               'Go(everywhere)']
+    fluents = ['At(here)', 'At(there)']
 
     def setUp(self):
 
@@ -134,7 +131,7 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "Non-Canceling effects incorrectly marked as mutex"
         )
 
-    @unittest.skip('skip')
+    # @unittest.skip('skip')
     def test_interference_mutex(self):
         self.assertTrue(
             PlanningGraph.interference_mutex(self.pg, self.na4, self.na5),

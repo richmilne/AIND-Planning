@@ -115,10 +115,21 @@ class Action(object):
                      (self.effect_rem & other.effect_add) )
 
     def mutex_interference(self, other):
-        # one of the effects of one action is the negation of a precondition
-        # of the other.
-        return     ( (self.precond_pos & other.effect_rem) |
-                     (self.precond_neg & other.effect_add) )
+        """Test a pair of actions for interfering mutual exclusion
+
+        Returns True if the effect of one action is the negation of a
+        precondition of the other."""
+#        print('\nComparing %s and %s' % (str(self), str(other)))
+#        for obj in (self, other):
+#            for attr in 'precond_pos precond_neg effect_add effect_rem'.split():
+#                val = getattr(obj, attr)
+#                print('\t%s %s - %s' % (attr, str(obj), bin(val)[2:].zfill(2)))
+
+        return     ( (self.precond_pos & other.effect_rem) or
+                     (self.effect_rem  & other.precond_pos) or
+                     (self.precond_neg & other.effect_add) or
+                     (self.effect_add  & other.precond_neg)
+                   )
 
     def mutex_competing(self, other):
         """Test a pair of actions for competing mutual exclusion
