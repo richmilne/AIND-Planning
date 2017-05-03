@@ -1,5 +1,5 @@
 from actions import Action
-from lp_utils import encode_state
+from lp_utils import encode_state, decode_state
 from aimacode.search import Node, Problem
 from my_planning_graph import PlanningGraph
 
@@ -27,6 +27,16 @@ class PlanningProblem(Problem):
         # saved in Parent class as .initial
         Problem.__init__(self, initial_state, goal=goal)
         self.actions_list = action_fn(all_fluents)
+
+    def get_state_fluents(self, state=None):
+        """Decode state bitmap into list of positive and negative fluents.
+
+        If not state is given, decodes current state of this instance."""
+        if state is None:
+            state = self.initial
+        pos = set(decode_state(self.all_fluents, state))
+        neg = set(self.all_fluents) - pos
+        return (sorted(pos), sorted(neg))
 
     def actions(self, state: int) -> list:
         """Return the actions that can be executed in the given state.

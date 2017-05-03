@@ -5,12 +5,12 @@ parent = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(os.path.dirname(parent), "aimacode"))
 import unittest
 from aimacode.utils import expr
-from aimacode.planning import Action
+from actions import Action
 from example_have_cake import have_cake
 from my_planning_graph import (
     PlanningGraph, PgNode_a, PgNode_s, mutexify
 )
-
+from planning_problem import PlanningProblem
 
 class TestPlanningGraphLevels(unittest.TestCase):
     def setUp(self):
@@ -35,25 +35,68 @@ class TestPlanningGraphLevels(unittest.TestCase):
         self.assertEqual(len(self.pg.s_levels[2]), 4, len(self.pg.s_levels[2]))
 
 
+def create_test_actions(all_fluents):
+    actions = [
+        # na1
+        Action('Go(here)', all_fluents,
+               [[], []],
+               [['At(here)'], []]
+        ),
+        # na2
+        Action('Go(there)', all_fluents,
+               [[], []],
+               [['At(there)'], []]
+        ),
+        # na3
+        Action('Noop(At(there))', all_fluents,
+               [['At(there)'], []],
+               [['At(there)'], []]
+        ),
+        # na4
+        Action('Noop(At(here))', all_fluents,
+               [['At(here)'], []],
+               [['At(here)'], []]
+        ),
+        # na5
+        Action('Reverse(At(here))', all_fluents,
+               [['At(here)'], []],
+               [[], ['At(here)']]
+        ),
+        # na6
+        Action('Go(everywhere)', all_fluents,
+               [[], []],
+               [['At(here)', 'At(there)'], []]
+        )
+    ]
+    return actions
+
+
 class TestPlanningGraphMutex(unittest.TestCase):
+
+    fluents = ['Go(here)', 'Go(there)',
+               'At(here)', 'At(there)',
+               'Noop(At(here))', 'Reverse(At(here))'
+               'Go(everywhere)']
+
     def setUp(self):
-        self.p = have_cake()
-        self.pg = PlanningGraph(self.p, self.p.initial)
-        # some independent nodes for testing mutex
-        self.na1 = PgNode_a(Action(expr('Go(here)'),
-                                   [[], []], [[expr('At(here)')], []]))
-        self.na2 = PgNode_a(Action(expr('Go(there)'),
-                                   [[], []], [[expr('At(there)')], []]))
-        self.na3 = PgNode_a(Action(expr('Noop(At(there))'),
-                                   [[expr('At(there)')], []], [[expr('At(there)')], []]))
-        self.na4 = PgNode_a(Action(expr('Noop(At(here))'),
-                                   [[expr('At(here)')], []], [[expr('At(here)')], []]))
-        self.na5 = PgNode_a(Action(expr('Reverse(At(here))'),
-                                   [[expr('At(here)')], []], [[], [expr('At(here)')]]))
-        self.ns1 = PgNode_s(expr('At(here)'), True)
-        self.ns2 = PgNode_s(expr('At(there)'), True)
-        self.ns3 = PgNode_s(expr('At(here)'), False)
-        self.ns4 = PgNode_s(expr('At(there)'), False)
+
+        init = ([], self.fluents)
+        goal = []
+        test_problem = PlanningProblem(init, goal, create_test_actions)
+        self.pg = PlanningGraph(test_problem, test_problem.initial)
+
+        # Create some independent nodes for testing mutexes
+        action_nodes = {}
+        for i, action in enumerate(test_problem.actions_list):
+            name = 'na%d' % (i+1)
+            node = PgNode_a(action)
+            action_nodes[name] = node
+        self.__dict__.update(action_nodes)
+
+        self.ns1 = PgNode_s('At(here)', True)
+        self.ns2 = PgNode_s('At(there)', True)
+        self.ns3 = PgNode_s('At(here)', False)
+        self.ns4 = PgNode_s('At(there)', False)
         self.na1.children.add(self.ns1)
         self.ns1.parents.add(self.na1)
         self.na2.children.add(self.ns2)
@@ -61,7 +104,7 @@ class TestPlanningGraphMutex(unittest.TestCase):
         self.na1.parents.add(self.ns3)
         self.na2.parents.add(self.ns4)
 
-    @unittest.skip('skip')
+    # @unittest.skip('skip')
     def test_serialize_mutex(self):
         self.assertTrue(
             PlanningGraph.serialize_actions(self.pg, self.na1, self.na2),
@@ -76,7 +119,7 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "No-op and persistence action incorrectly marked as mutex"
         )
 
-    @unittest.skip('skip')
+    # @unittest.skip('skip')
     def test_inconsistent_effects_mutex(self):
         self.assertTrue(
             PlanningGraph.inconsistent_effects_mutex(
@@ -95,7 +138,8 @@ class TestPlanningGraphMutex(unittest.TestCase):
     def test_interference_mutex(self):
         self.assertTrue(
             PlanningGraph.interference_mutex(self.pg, self.na4, self.na5),
-            "Precondition from one node opposite of effect of other node " "should be mutex"
+            "Precondition from one node opposite of effect of other node "
+            "should be mutex"
         )
         self.assertTrue(
             PlanningGraph.interference_mutex(self.pg, self.na5, self.na4),
@@ -148,8 +192,8 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "Mutex parent actions should result in inconsistent-support mutex"
         )
 
-        self.na6 = PgNode_a(Action(expr('Go(everywhere)'),
-                                   [[], []], [[expr('At(here)'), expr('At(there)')], []]))
+#        self.na6 = PgNode_a(Action(expr('Go(everywhere)'),
+#                                   [[], []], [[expr('At(here)'), expr('At(there)')], []]))
         self.na6.children.add(self.ns1)
         self.ns1.parents.add(self.na6)
         self.na6.children.add(self.ns2)
