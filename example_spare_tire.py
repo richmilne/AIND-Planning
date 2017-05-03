@@ -18,13 +18,14 @@ def spare_tire_actions(tires, locations, all_fluents):
         for tyre in tires:
             effect_add = ['At(%s, Ground)' % tyre]
             for loc in locations:
+                if loc == 'Ground': continue
                 precond_pos = ['At(%s, %s)' % (tyre, loc)]
                 remove = Action('Remove(%s, %s)' % (tyre, loc), all_fluents,
                                 [precond_pos, []],
                                 [effect_add, precond_pos])
                 actions.append(remove)
         return actions
-        
+
     def put_on_actions():
         # Action(PutOn(t, Axle),
         #    PRECOND:  Tire(t) ∧ At(t, Ground) ∧  ¬ At(Flat, Axle)
@@ -33,6 +34,9 @@ def spare_tire_actions(tires, locations, all_fluents):
         # What stops you from putting the Flat back on an Axle, even if the
         # Spare is already there? The fact that a solution will be found
         # before that possibility arises?
+        # The text suggests "the mutex relations detect the immediate conflict
+        # that arises from trying to put two objects in the same place at the
+        # same time"
         actions = []
         precond_neg = ['At(Flat, Axle)']
         for tyre in tires:
