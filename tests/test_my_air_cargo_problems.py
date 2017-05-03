@@ -42,7 +42,7 @@ class TestAirCargoProb1(unittest.TestCase):
         self.assertEqual(len(initial_pos), 4)
 
     def test_ACP1_num_requirements(self):
-        goals = set(self.decoder(self.prob.goal))
+        goals = set(self.decoder(self.prob.goal_pos))
         self.assertEqual(goals, set(self.goals))
         self.assertEqual(len(goals), 2)
 
@@ -76,7 +76,7 @@ class TestAirCargoProb2(unittest.TestCase):
         self.assertEqual(len(self.decoder(self.prob.initial)), 6)
 
     def test_ACP3_num_requirements(self):
-        self.assertEqual(len(self.decoder(self.prob.goal)),4)
+        self.assertEqual(len(self.decoder(self.prob.goal_pos)),4)
 
 
 class TestAirCargoMethods(unittest.TestCase):
@@ -90,20 +90,22 @@ class TestAirCargoMethods(unittest.TestCase):
         )
 
     def test_AC_get_actions(self):
-        # to see a list of the actions, uncomment below
-        # print("\nAll actions for the problem")
-        # for action in self.p1.actions_list:
-        #     # print("{}{}".format(action.name, action.args))
-        #     print(str(action))
-        # action.__str__() was originally defined as
-        # "{}{}".format(action.name, action.args)) ... so just use str()!
+        # to see a list of the actions, enable (set to True/1) below
+        if 0:
+            print("\nAll actions for the problem")
+            for action in self.p1.actions_list:
+                # print("{}{}".format(action.name, action.args))
+                # The line above is the actual definition of the
+                # action.__str__() function - so just use it!
+                print(str(action))
         self.assertEqual(len(self.p1.actions_list), 20)
 
     def test_AC_actions(self):
-        # to see list of possible actions, uncomment below
-        # print("\nActions possible from initial state:")
-        # for action in self.p1.actions(self.p1.initial):
-        #     print(str(action))
+        # to see a list of the actions, enable (set to True/1) below
+        if 0:
+            print("\nActions possible from initial state:")
+            for action in self.p1.actions(self.p1.initial):
+                print(str(action))
         self.assertEqual(len(self.p1.actions(self.p1.initial)), 4)
 
     def test_AC_result(self):

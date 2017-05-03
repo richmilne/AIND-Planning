@@ -73,7 +73,7 @@ def spare_tire():
     pos = ['At(Flat, Axle)', 'At(Spare, Trunk)']
     neg = ['At(Flat, Ground)', 'At(Flat, Trunk)',
            'At(Spare, Ground)', 'At(Spare, Axle)']
-    goal = ['At(Spare, Axle)']
+    goal = [['At(Spare, Axle)'], []]
     init = (pos, neg)
     action_fn = partial(spare_tire_actions, tires, locations)
     return PlanningProblem(init, goal, action_fn)
@@ -95,8 +95,11 @@ if __name__ == '__main__':
         print('   {}'.format(f))
 
     print("Goal requirement for this problem are:")
-    for g in decode_state(p.all_fluents, p.goal):
+    for g in decode_state(p.all_fluents, p.goal_pos):
         print('   {}'.format(g))
+    for g in decode_state(p.all_fluents, p.goal_neg):
+        print('  ~{}'.format(g))
+
     print()
     print("*** Breadth First Search")
     run_search(p, breadth_first_search)

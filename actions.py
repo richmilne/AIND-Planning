@@ -111,7 +111,7 @@ class Action(object):
 
         Returns True if one action negates an effect of the other; False
         otherwise."""
-        return     ( (self.effect_add & other.effect_rem) |
+        return     ( (self.effect_add & other.effect_rem) or
                      (self.effect_rem & other.effect_add) )
 
     def mutex_interference(self, other):
@@ -136,7 +136,7 @@ class Action(object):
 
         Returns True if any of the preconditions of one action are mutually
         exclusive with any of the preconditions of the other action."""
-        return     ( (self.precond_pos & other.precond_neg) |
+        return     ( (self.precond_pos & other.precond_neg) or
                      (self.precond_neg & other.precond_pos) )
 
 

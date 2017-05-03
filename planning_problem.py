@@ -20,16 +20,20 @@ class PlanningProblem(Problem):
         pos, neg = initial
         all_fluents = tuple(sorted(pos+neg))
         initial_state = encode_state(all_fluents, pos)
-        goal = encode_state(all_fluents, goal)
+
+        goal_pos, goal_neg = [encode_state(all_fluents, g) for g in goal]
+        assert not(goal_pos & goal_neg)
+        self.goal_pos, self.goal_neg = goal_pos, goal_neg
 
         self.all_fluents = all_fluents
         # self.initial_state = initial_state - not needed; initial state
         # saved in Parent class as .initial
         Problem.__init__(self, initial_state, goal=goal)
+
         self.actions_list = action_fn(all_fluents)
 
     def get_state_fluents(self, state=None):
-        """Decode state bitmap into list of positive and negative fluents.
+        """Decode state bitmap into lists of positive and negative fluents.
 
         If not state is given, decodes current state of this instance."""
         if state is None:
@@ -66,7 +70,8 @@ class PlanningProblem(Problem):
 
         :param state: int representing state
         :return: bool"""
-        return self.goal & state == self.goal
+        return ((self.goal_pos & state == self.goal_pos) and
+                (self.goal_neg & state) == 0) 
 
     def h_1(self, node: Node):
         # note that this is not a true heuristic

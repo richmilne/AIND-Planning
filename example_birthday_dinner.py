@@ -1,3 +1,6 @@
+# See:
+# https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-825-techniques-in-artificial-intelligence-sma-5504-fall-2002/lecture-notes/Lecture12FinalPart1.pdf
+
 from actions import Action
 from planning_problem import PlanningProblem
 from functools import partial
@@ -8,38 +11,52 @@ from aimacode.search import (
     uniform_cost_search, greedy_best_first_graph_search, Problem,
 )
 
+def bday_dinner_actions(all_fluents):
+    return [
+        # Action(Cook,
+        #    PRECOND: CleanHands
+        #    EFFECT:  Dinner
+        Action('Cook', all_fluents,
+            [['CleanHands'], []],
+            [['Dinner'], []]),
 
-def cake_actions(all_fluents):
-    precond_pos = ["Have(Cake)"]
-    precond_neg = []
-    effect_add = ["Eaten(Cake)"]
-    effect_rem = ["Have(Cake)"]
-    eat_action = Action("Eat(Cake)", all_fluents,
-                        [precond_pos, precond_neg],
-                        [effect_add, effect_rem])
+        # Action(Wrap,
+        #    PRECOND: Quiet
+        #    EFFECT:  Present
+        Action('Wrap', all_fluents,
+            [['Quiet'], []],
+            [['Present'], []]),
 
-    precond_pos = []
-    precond_neg = ["Have(Cake)"]
-    effect_add = ["Have(Cake)"]
-    effect_rem = []
-    bake_action = Action("Bake(Cake)", all_fluents,
-                         [precond_pos, precond_neg],
-                         [effect_add, effect_rem])
-    return [eat_action, bake_action]
+        # Action(Carry,
+        #    PRECOND: Garbage
+        #    EFFECT:  ¬ Garbage ∧ ¬ CleanHands
+        Action('Carry', all_fluents,
+            [['Garbage'], []],
+            [[], ['Garbage', 'CleanHands']]),
+
+        # Action(Dolly,
+        #    PRECOND: Garbage
+        #    EFFECT:  ¬ Garbage ∧ ¬ Quiet
+        Action('Dolly', all_fluents,
+            [['Garbage'], []],
+            [[], ['Garbage', 'Quiet']]),
+    ]
 
 
-def have_cake():
-    pos = ['Have(Cake)']
-    neg = ['Eaten(Cake)']
-    goal = [['Have(Cake)', 'Eaten(Cake)'], []]
+def birthday_dinner():
+    pos = ['Garbage', 'CleanHands', 'Quiet']
+    neg = ['Dinner', 'Present']
     init = (pos, neg)
-    return PlanningProblem(init, goal, cake_actions)
+    goal = [neg, ['Garbage']]
+
+    return PlanningProblem(init, goal, bday_dinner_actions)
+
 
 if __name__ == '__main__':
     from lp_utils import decode_state
 
-    p = have_cake()
-    print("**** Have Cake example problem setup ****")
+    p = birthday_dinner()
+    print("**** Spare Tire example problem setup ****")
     initial = decode_state(p.all_fluents, p.initial)
     print("Initial state for this problem is {}".format(initial))
     print("Actions for this domain are:")
