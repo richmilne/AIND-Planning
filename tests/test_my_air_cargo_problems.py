@@ -42,7 +42,9 @@ class TestAirCargoProb1(unittest.TestCase):
         self.assertEqual(len(initial_pos), 4)
 
     def test_ACP1_num_requirements(self):
-        goals = set(self.decoder(self.prob.goal_pos))
+        goal_bitmaps = [self.prob.goal_action.precond_pos,
+                        self.prob.goal_action.precond_neg]
+        goals = set(sum([self.decoder(bitmap) for bitmap in goal_bitmaps], []))
         self.assertEqual(goals, set(self.goals))
         self.assertEqual(len(goals), 2)
 
@@ -76,7 +78,10 @@ class TestAirCargoProb2(unittest.TestCase):
         self.assertEqual(len(self.decoder(self.prob.initial)), 6)
 
     def test_ACP3_num_requirements(self):
-        self.assertEqual(len(self.decoder(self.prob.goal_pos)),4)
+        goal_bitmaps = [self.prob.goal_action.precond_pos,
+                        self.prob.goal_action.precond_neg]
+        goals = sum([self.decoder(bitmap) for bitmap in goal_bitmaps], [])
+        self.assertEqual(len(goals),4)
 
 
 class TestAirCargoMethods(unittest.TestCase):

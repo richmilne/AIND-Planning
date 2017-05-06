@@ -11,8 +11,8 @@ class PlanningProblem(Problem):
         """
         :param initial: 2-tuple of positive and negative literal fluents,
             describing the initial state of the problem
-        :param goal: list
-            literal fluents required for goal test
+        :param goal: 2-tuple of positive and negative literal fluents,
+            describing the problem's goal state
         :param action_fn: Function which creates all the concrete actions for
             the problem. This function will be passed an ordered, immutable
             reference tuple of all the fluents in the problem. The function
@@ -21,9 +21,11 @@ class PlanningProblem(Problem):
         all_fluents = tuple(sorted(pos+neg))
         initial_state = encode_state(all_fluents, pos)
 
-        goal_pos, goal_neg = [encode_state(all_fluents, g) for g in goal]
-        assert not(goal_pos & goal_neg)
-        self.goal_pos, self.goal_neg = goal_pos, goal_neg
+        # Simpler to encode goal fluents as the pos and neg preconditions of an
+        # action, so we can use the Action's precondition check methods.
+        self.goal_action = Action('GoalAction', all_fluents,
+                                  goal,
+                                  [[], []])
 
         self.all_fluents = all_fluents
         # self.initial_state = initial_state - not needed; initial state
@@ -70,8 +72,7 @@ class PlanningProblem(Problem):
 
         :param state: int representing state
         :return: bool"""
-        return ((self.goal_pos & state == self.goal_pos) and
-                (self.goal_neg & state) == 0) 
+        return self.goal_action.check_precond(state)
 
     def h_1(self, node: Node):
         # note that this is not a true heuristic

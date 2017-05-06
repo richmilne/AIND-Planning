@@ -51,9 +51,9 @@ if __name__ == '__main__':
         print('   {}'.format(f))
 
     print("Goal requirement for this problem are:")
-    for g in decode_state(p.all_fluents, p.goal_pos):
+    for g in decode_state(p.all_fluents, p.goal_action.precond_pos):
         print('   {}'.format(g))
-    for g in decode_state(p.all_fluents, p.goal_neg):
+    for g in decode_state(p.all_fluents, p.goal_action.precond_neg):
         print('  ~{}'.format(g))
 
     print()

@@ -1,4 +1,5 @@
 from lp_utils import encode_state, action_bitmaps, decode_state
+from lp_utils import check_precond_subset, check_precond_invert
 
 
 class Action(object):
@@ -83,19 +84,19 @@ class Action(object):
         return self.name
 
     def __repr__(self):
-        width = len(bin(self.effect_mask)[2:])
-
         bitmaps = (self.precond_pos, self.precond_neg,
                    self.effect_add, self.effect_rem, self.effect_mask)
-        bin_strs = [self.name] + [bin(b)[2:].zfill(width) for b in bitmaps]
-        return '-'.join(bin_strs)
+        bin_strs = [bin(b)[2:] for b in bitmaps]
+        width = max([len(b) for b in bin_strs])
+        bin_strs = [b.zfill(width) for b in bin_strs]
+        return '-'.join([self.name] + bin_strs)
 
     def check_precond(self, kb):
         """Checks if the precondition is satisfied in the current state"""
         # KB - recorded as state bitmap
-        if not (kb & self.precond_pos == self.precond_pos):
-            return False
-        return kb & self.precond_neg == 0
+        return (check_precond_subset(self.precond_pos, kb) and
+                check_precond_invert(self.precond_neg, kb))
+
 
     def act(self, kb):
         """Executes the action on the state's kb"""

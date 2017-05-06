@@ -1,3 +1,48 @@
+def check_precond_subset(precond, state):
+    """Check whether the bits set in precond are a subset of the state bits
+    
+    >>> precond = 0b1010
+    >>> check_precond_subset(precond, precond) # Exact match
+    True
+    >>> check_precond_subset(precond, 0b1011)  # Extra bits set in state
+    True
+    >>> check_precond_subset(precond, 0b1001)  # No match - different bits
+    False
+    >>> check_precond_subset(precond, 0)       # No match - zero state
+    False
+    >>> check_precond_subset(0, 1)             # Match - extra bits set in state
+    True
+    >>> check_precond_subset(0, 0)             # Exact match
+    True
+    """
+    if not precond:
+        return True
+    return (precond & state == precond)
+
+
+def check_precond_invert(precond, state):
+    """Check whether the bits set in precond are reset in state
+    
+    >>> precond = 0b1010
+    >>> check_precond_invert(precond, 0b0101)  # Exact inverse
+    True
+    >>> check_precond_invert(precond, 0b0100)  # Extra bits reset in state
+    True
+    >>> check_precond_invert(precond, 0b0010)  # No match - bit should be reset
+    False
+    >>> check_precond_invert(precond, 0)       # Match - zero state
+    True
+    >>> check_precond_invert(0, 1)             # Match - bits need not be reset
+    True
+    >>> check_precond_invert(0, 0)             # Exact match
+    True
+    """
+    # if not precond or not state:
+    if not (precond & state):
+        return True
+    return ((precond ^ state) & precond) == precond
+
+
 def action_bitmaps(all_fluents: tuple, add_pos, rem_neg):
     """Encode fluent lists as precondition/effect bitmaps.
 
