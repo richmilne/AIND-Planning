@@ -1,8 +1,7 @@
 from actions import Action
 from aimacode.search import Problem
-from aimacode.utils import expr
-from lp_utils import decode_state
-
+from lp_utils import decode_state, encode_state
+from functools import reduce, partial
 
 class PgNode():
     """Base class for planning graph nodes.
@@ -97,6 +96,10 @@ class PgNode_s(PgNode):
             print("\n*** ~{}".format(self.symbol))
         PgNode.show(self)
 
+    def __repr__(self):
+        sign = ' ' if self.is_pos else '~'
+        return sign + self.symbol
+
     def __eq__(self, other):
         """Equality test for nodes - compares only the literal for equality
 
@@ -113,7 +116,7 @@ class PgNode_s(PgNode):
 
 
 class PgNode_a(PgNode):
-    """A-type (action) Planning Graph node - inherited from PgNode """
+    """A-type (action) Planning Graph node - inherited from PgNode"""
 
     def __init__(self, action: Action):
         """A-level Planning Graph node constructor
@@ -141,10 +144,25 @@ class PgNode_a(PgNode):
         """
         PgNode.__init__(self)
         self.action = action
-        self.prenodes = self.precond_s_nodes()
-        self.effnodes = self.effect_s_nodes()
-        self.is_persistent = self.prenodes == self.effnodes
+        #self.prenodes = self.precond_s_nodes()
+        #self.effnodes = self.effect_s_nodes()
+        self.is_persistent_ = None
         self.__hash = None
+
+    @property
+    def is_persistent(self):
+        if self.is_persistent_ is None:
+            check = (
+                (self.action.precond_pos == self.action.effect_add) ^
+                (self.action.precond_neg == self.action.effect_rem)
+            )
+            if check:
+                combined = self.action.precond_pos + self.action.precond_neg
+                one_bit_check = sum([int(n) for n in bin(combined)[2:]]) == 1
+                check = check and one_bit_check
+            self.is_persistent_ = check and self.action.name[0] in '+-'
+        return self.is_persistent_
+
 
     def show(self):
         """Helper print for debugging shows action, plus counts of parents,
@@ -165,6 +183,9 @@ class PgNode_a(PgNode):
 
         :return: set of PgNode_s
         """
+        raise NotImplementedError(
+            'This functionality performed in PlanningGraph.add_action_level()'
+        )
         nodes = set()
         # for p in self.action.precond_pos:
         #     nodes.add(PgNode_s(p, True))
@@ -186,8 +207,10 @@ class PgNode_a(PgNode):
 
         :return: set of PgNode_s
         """
+        raise NotImplementedError(
+            'This functionality performed in PlanningGraph.add_action_level()'
+        )
         nodes = set()
-
         for e in self.action.expand_bitmap(self.action.effect_add):
             nodes.add(PgNode_s(e, True))
         for e in self.action.expand_bitmap(self.action.effect_rem):
@@ -206,6 +229,9 @@ class PgNode_a(PgNode):
                 self.action.name == other.action.name # and
                 # self.action.args == other.action.args
                 )
+    
+    def __repr__(self):
+        return self.action.name
 
     def __hash__(self):
         self.__hash = (self.__hash or hash(self.action.name))
@@ -255,6 +281,8 @@ class PlanningGraph():
                 represents an A-level in the planning graph
         """
         self.problem = problem
+        self.decode_state = partial(decode_state, problem.all_fluents)
+        self.encode_state = partial(encode_state, problem.all_fluents)
         self.fs = problem.get_state_fluents(state)
         self.serial = serial_planning
 
@@ -288,20 +316,17 @@ class PlanningGraph():
         """
         action_list = []
 
-        noop_fluents = []
-        precond_effects = []
         for fluent in all_fluents:
-            noop_fluents.append("+NoOp({})".format(fluent))
-            precond_effects.append(([fluent], []))
-            noop_fluents.append("-NoOp({})".format(fluent))
-            precond_effects.append(([], [fluent]))
-
-        all_fluents = tuple(noop_fluents) + all_fluents
-        # Add back to self.problem?
-
-        for noop, pre_eff in zip(noop_fluents, precond_effects):
-            action = Action(noop, all_fluents, pre_eff, pre_eff)
-            action_list.append(action)
+            action_list.append(
+                Action('+NoOp(%s)' % fluent, all_fluents,
+                [[fluent], []],
+                [[fluent], []])
+            )
+            action_list.append(
+                Action('-NoOp(%s)' % fluent, all_fluents,
+                [[], [fluent]],
+                [[], [fluent]])
+            )
 
         return action_list
 
@@ -334,30 +359,73 @@ class PlanningGraph():
         self.s_levels.append(set())  # S0 set of s_nodes - empty to start
         # For each fluent in the initial state, add the correct literal
         # PgNode_s
+        # print('literals:', self.fs)
         for literal in self.fs[0]:
             self.s_levels[level].add(PgNode_s(literal, True))
-        for literal in self.fs[1]:
-            self.s_levels[level].add(PgNode_s(literal, False))
-        # No mutexes at the first level
+        print('Initial level:', self.s_levels[level])
 
-        # Only return for now while we step through the planning graph mutex
-        # tests
-        return
+        # Not going to automatically add all negative fluents - only those
+        # which, when combined with the positive fluents, meet the preconditions
+        # for an action - see add action level.
+        #for literal in self.fs[1]:
+        #    self.s_levels[level].add(PgNode_s(literal, False))
+
+        # No mutexes at the first level
 
         # Continue to build the graph alternating A, S-levels until last two
         # S-levels contain the same literals
         # i.e. until it is "leveled"
         while not leveled:
+            print()
             print('Constructing level:', level)
             self.add_action_level(level)
             self.update_a_mutex(self.a_levels[level])
+
+            print('A Level:', level, self.a_levels[level])
 
             level += 1
             self.add_literal_level(level)
             self.update_s_mutex(self.s_levels[level])
 
+            print('S Level:', level-1, self.s_levels[level-1])
+            print('S Level:', level, self.s_levels[level])
+            print( self.s_levels[level] == self.s_levels[level-1] )
             if self.s_levels[level] == self.s_levels[level - 1]:
                 leveled = True
+
+    def get_level_state(self, level):
+        """Return the state of the pos, neg fluents at the given level"""
+        pos_fluents = []
+        neg_fluents = []
+        for node in self.s_levels[level]:
+            if node.is_pos:
+                pos_fluents.append(node.symbol)
+            else:
+                neg_fluents.append(node.symbol)
+
+        pos_state = self.encode_state(pos_fluents)
+        neg_state = self.encode_state(neg_fluents)
+
+        return pos_state, neg_state
+
+    # We have to check each action precond bitmap separately - can't simply use
+    # check_precond(), because the previous state level represents a
+    # superposition of many, possibly mutex, fluents.
+    def return_matching_actions_pos(self, pos_state, first_level=False):
+        applicable_actions = []
+        actions = self.problem.actions_list if first_level else self.all_actions
+        for action in actions:
+            match = (action.precond_pos & pos_state == action.precond_pos)
+            match = match or action.precond_pos == 0
+            if match:
+                applicable_actions.append(action)
+        return applicable_actions
+
+    def filter_matching_actions_neg(self, applicable_actions, neg_state):
+        new = [action for action in applicable_actions
+               if action.precond_neg & neg_state == neg_state
+               or action.precond_neg == 0]
+        return new
 
     def add_action_level(self, level):
         """Add an A (action) level to the Planning Graph
@@ -380,7 +448,50 @@ class PlanningGraph():
         #    has prenodes that are a subset of the previous S level.
         #    Once an action node is added, it MUST be connected to the S node
         #    instances in the appropriate s_level set.
-        pass
+
+        # 1. Get the state representation of this level
+        pos_state, neg_state = self.get_level_state(level)
+
+        # 2. Find all actions whose preconditions match the state of this level.
+        actions = self.return_matching_actions_pos(pos_state, level==0)
+        if level:
+            actions = self.filter_matching_actions_neg(actions, neg_state)
+        else:
+            # At level 0, we implicitly assume all negative fluents are
+            # applicable. Here's where we add the actual neg fluent S-nodes to
+            # level 0 - but only if the neg fluent is a precondition for an
+            # action.
+            if actions:
+                neg_preconds = [action.precond_neg for action in actions]
+                print('Adding negative preconds:')
+                print([bin(n)[2:] for n in neg_preconds])
+                neg_precond = reduce(lambda x, y: x|y, neg_preconds)
+                print('OR-ed preconds:', bin(neg_precond)[2:])
+                neg_fluents = self.decode_state(neg_precond)
+                for literal in neg_fluents:
+                    self.s_levels[level].add(PgNode_s(literal, False))
+
+        # Create new set to hold the A-nodes at this level
+        self.a_levels.append(set())
+
+        # 3. For each action, find all the S-nodes which match the pre-
+        #    conditions of that action.
+        s_nodes_dict = dict([(hash(n), n) for n in self.s_levels[level]])
+        print('Current nodes dict:')
+        for item in sorted(s_nodes_dict.items()):
+            print(item)
+        for action in actions:
+            a_node = PgNode_a(action)
+            for sign, bitmap in [(True, action.precond_pos),
+                                (False, action.precond_neg)]:
+                for fluent in self.decode_state(bitmap):
+                    temp_s_node = PgNode_s(fluent, sign)
+                    print('created temp node:', repr(temp_s_node), hash(temp_s_node))
+                    s_node = s_nodes_dict[hash(temp_s_node)]
+                    # Wire up the s- and a-nodes
+                    a_node.parents.add(s_node)
+                    s_node.children.add(a_node)
+            self.a_levels[level].add(a_node)
 
     def add_literal_level(self, level):
         """Add an S (literal) level to the Planning Graph
@@ -404,7 +515,16 @@ class PlanningGraph():
         #    correctly create and connect all of the new S-nodes as children
         #    of all the A-nodes that could produce them, and likewise add the
         #    A-nodes to the parent sets of the S-nodes
-        pass
+        self.s_levels.append(set())
+        for a_node in self.a_levels[level-1]:
+            for sign, bitmap in [(True, a_node.action.effect_add),
+                                (False, a_node.action.effect_rem)]:
+                for fluent in self.decode_state(bitmap):
+                    s_node = PgNode_s(fluent, sign)
+                    s_node.parents.add(a_node)
+                    a_node.children.add(s_node)
+                    self.s_levels[level].add(s_node)
+
 
     def update_a_mutex(self, nodeset):
         """Determine and update sibling mutual exclusion for A-level nodes

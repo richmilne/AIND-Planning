@@ -46,7 +46,7 @@ class Action(object):
     """
     def __init__(self, name, all_fluents, precond, effect):
         self.name = name
-        self.all_fluents = all_fluents
+#        self.all_fluents = all_fluents
 
         pos, neg, _ = action_bitmaps(all_fluents, *precond)
         self.precond_pos, self.precond_neg = pos, neg
@@ -82,6 +82,14 @@ class Action(object):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        width = len(bin(self.effect_mask)[2:])
+
+        bitmaps = (self.precond_pos, self.precond_neg,
+                   self.effect_add, self.effect_rem, self.effect_mask)
+        bin_strs = [self.name] + [bin(b)[2:].zfill(width) for b in bitmaps]
+        return '-'.join(bin_strs)
+
     def check_precond(self, kb):
         """Checks if the precondition is satisfied in the current state"""
         # KB - recorded as state bitmap
@@ -101,10 +109,10 @@ class Action(object):
 
         return kb
 
-    def expand_bitmap(self, bitmap):
-        """Returns the fluent literals corresponding to the bits set in bitmap.
-        """
-        return decode_state(self.all_fluents, bitmap)
+#    def expand_bitmap(self, bitmap):
+#        """Returns the fluent literals corresponding to the bits set in bitmap.
+#        """
+#        return decode_state(self.all_fluents, bitmap)
 
     def mutex_inconsistent_effects(self, other):
         """Test a pair of actions for inconsistent effects.
