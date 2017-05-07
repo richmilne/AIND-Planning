@@ -47,7 +47,6 @@ class Action(object):
     """
     def __init__(self, name, all_fluents, precond, effect):
         self.name = name
-#        self.all_fluents = all_fluents
 
         pos, neg, _ = action_bitmaps(all_fluents, *precond)
         self.precond_pos, self.precond_neg = pos, neg
@@ -87,7 +86,7 @@ class Action(object):
         bitmaps = (self.precond_pos, self.precond_neg,
                    self.effect_add, self.effect_rem)
         bin_strs = [bin(b)[2:] for b in bitmaps]
-        width = max([len(b) for b in bin_strs])
+        width = max([len(b) for b in bin_strs + [bin(self.effect_mask)[2:]]])
         bin_strs = [b.zfill(width) for b in bin_strs]
         return '-'.join([self.name] + bin_strs)
 
@@ -96,7 +95,6 @@ class Action(object):
         # KB - recorded as state bitmap
         return (check_precond_subset(self.precond_pos, kb) and
                 check_precond_invert(self.precond_neg, kb))
-
 
     def act(self, kb):
         """Executes the action on the state's kb"""
@@ -109,11 +107,6 @@ class Action(object):
         kb = kb | self.effect_add
 
         return kb
-
-#    def expand_bitmap(self, bitmap):
-#        """Returns the fluent literals corresponding to the bits set in bitmap.
-#        """
-#        return decode_state(self.all_fluents, bitmap)
 
     def mutex_inconsistent_effects(self, other):
         """Test a pair of actions for inconsistent effects.
@@ -128,25 +121,19 @@ class Action(object):
 
         Returns True if the effect of one action is the negation of a
         precondition of the other."""
-#        print('\nComparing %s and %s' % (str(self), str(other)))
-#        for obj in (self, other):
-#            for attr in 'precond_pos precond_neg effect_add effect_rem'.split():
-#                val = getattr(obj, attr)
-#                print('\t%s %s - %s' % (attr, str(obj), bin(val)[2:].zfill(2)))
-
-        return     ( (self.precond_pos & other.effect_rem) or
-                     (self.effect_rem  & other.precond_pos) or
-                     (self.precond_neg & other.effect_add) or
-                     (self.effect_add  & other.precond_neg)
-                   )
+        return ( (self.precond_pos & other.effect_rem) or
+                 (self.effect_rem  & other.precond_pos) or
+                 (self.precond_neg & other.effect_add) or
+                 (self.effect_add  & other.precond_neg)
+        )
 
     def mutex_competing(self, other):
         """Test a pair of actions for competing mutual exclusion
 
         Returns True if any of the preconditions of one action are mutually
         exclusive with any of the preconditions of the other action."""
-        return     ( (self.precond_pos & other.precond_neg) or
-                     (self.precond_neg & other.precond_pos) )
+        return ( (self.precond_pos & other.precond_neg) or
+                 (self.precond_neg & other.precond_pos) )
 
 
 if __name__ == '__main__':

@@ -251,7 +251,7 @@ class PgNode_a(PgNode):
 def mutexify(node1: PgNode, node2: PgNode):
     """Adds sibling nodes to each other's mutual exclusion (mutex) set.
 
-    These should be sibling nodes!
+    The two nodes must be sibling nodes!
 
     :param node1: PgNode (or inherited PgNode_a, PgNode_s types)
     :param node2: PgNode (or inherited PgNode_a, PgNode_s types)
@@ -645,7 +645,22 @@ class PlanningGraph():
 
         # HINT: The PgNode.is_mutex method can be used to test whether two
         # nodes are mutually exclusive.
-        return node_s1.is_mutex(node_s2)
+        
+        # From http://planning.cs.uiuc.edu/node66.html:
+        # Inconsistent support: Every pair of operators (actions), $ o,o' \in
+        # O_{i-1}$, that achieve $ l$ and $ l'$ is mutex. In this case, one
+        # operator must achieve $ l$, and the other must achieve $ l'$. If
+        # there exists an operator that achieves both, then this condition is
+        # false, regardless of the other pairs of operators. 
+        for a_node1 in node_s1.parents:
+            for a_node2 in node_s2.parents:
+                if not (a_node1.is_mutex(a_node2)):
+                    return False
+        # I haven't knowingly checked whether an action can effect both literals
+        # here. There's a unittest which apparently checks this functionality,
+        # though (test_inconsistent_support_mutex) , and it passess... so I must
+        # have done!
+        return True
 
     def h_levelsum(self) -> int:
         """The sum of the level costs of the individual goals

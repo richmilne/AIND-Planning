@@ -150,6 +150,12 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "Non-interfering incorrectly marked mutex"
         )
 
+    # TODO: Need to break these tests up. First part should just be testing an
+    # action object, and seeing whether the action mutex identification logic
+    # is working properly. Once you've confirmed that is working, THEN you can
+    # test the literal mutex checks, which identify mutex relationships among
+    # literals based on mutexes between their mutual action parents.
+
     @unittest.skip('Skipped test_competing_needs_mutex')
     def test_competing_needs_mutex(self):
         self.assertFalse(
@@ -175,7 +181,7 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "Same literal nodes found to be Negation mutex"
         )
 
-    @unittest.skip('Skipped test_inconsistent_support_mutex')
+    # @unittest.skip('Skipped test_inconsistent_support_mutex')
     def test_inconsistent_support_mutex(self):
         self.assertFalse(
             PlanningGraph.inconsistent_support_mutex(
@@ -192,8 +198,6 @@ class TestPlanningGraphMutex(unittest.TestCase):
             "Mutex parent actions should result in inconsistent-support mutex"
         )
 
-#        self.na6 = PgNode_a(Action(expr('Go(everywhere)'),
-#                                   [[], []], [[expr('At(here)'), expr('At(there)')], []]))
         self.na6.children.add(self.ns1)
         self.ns1.parents.add(self.na6)
         self.na6.children.add(self.ns2)
