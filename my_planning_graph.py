@@ -239,7 +239,7 @@ class PgNode_a(PgNode):
                 self.action.name == other.action.name # and
                 # self.action.args == other.action.args
                 )
-    
+
     def __repr__(self):
         return self.action.name
 
@@ -438,6 +438,17 @@ class PlanningGraph():
 
         # 1. Get the state representation of this level
         s_nodes_dict = dict([(hash(n), n) for n in self.s_levels[level]])
+        # TODO: You really must store the literal nodes at each level in a
+        # directory, not a set, so you don't have to re-process the nodes at
+        # each level. This will also make other lookups (such as the one in the
+        # levelsum function) quicker and easier.
+
+        # You can use PgNode_s in set([<PgNode_s>]) - which only tells you
+        # the node is in the set, but doesn't give you a reference to the actual
+        # node object in the set - and you need the reference to the object in
+        # the set (not the temporary one you created, which lacks all parent,
+        # child and mutex references) to store as a parent/child.
+
         # print('Current nodes dict:')
         # for item in sorted(s_nodes_dict.items()):
         #     print(item)
@@ -623,7 +634,7 @@ class PlanningGraph():
         # HINT: Look at the PgNode_s.__eq__ defines the notion of equivalence
         # for literal expression nodes, and the class tracks whether the
         # literal is positive or negative.
-        return ((node_s1.symbol == node_s2.symbol) and 
+        return ((node_s1.symbol == node_s2.symbol) and
                 (node_s1.is_pos ^ node_s2.is_pos))
 
     def inconsistent_support_mutex(self, node_s1: PgNode_s, node_s2: PgNode_s):
@@ -645,13 +656,13 @@ class PlanningGraph():
 
         # HINT: The PgNode.is_mutex method can be used to test whether two
         # nodes are mutually exclusive.
-        
+
         # From http://planning.cs.uiuc.edu/node66.html:
         # Inconsistent support: Every pair of operators (actions), $ o,o' \in
         # O_{i-1}$, that achieve $ l$ and $ l'$ is mutex. In this case, one
         # operator must achieve $ l$, and the other must achieve $ l'$. If
         # there exists an operator that achieves both, then this condition is
-        # false, regardless of the other pairs of operators. 
+        # false, regardless of the other pairs of operators.
         for a_node1 in node_s1.parents:
             for a_node2 in node_s2.parents:
                 if not (a_node1.is_mutex(a_node2)):
@@ -669,8 +680,16 @@ class PlanningGraph():
 
         :return: int
         """
-        level_sum = 0
         # TODO implement
         # For each goal in the problem, determine the level cost,
         # then add them together
+        level_sum = 0
+        for sign, bitmap in [(True, self.problem.goal_action.precond_pos),
+                            (False, self.problem.goal_action.precond_neg)]:
+            for fluent in self.decode_state(bitmap):
+                s_node = PgNode_s(fluent, sign)
+                for level, s_nodes in enumerate(self.s_levels):
+                    if s_node in s_nodes:
+                        level_sum += level
+                        break
         return level_sum
