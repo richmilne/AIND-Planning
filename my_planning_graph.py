@@ -152,15 +152,25 @@ class PgNode_a(PgNode):
     @property
     def is_persistent(self):
         if self.is_persistent_ is None:
-            check = (
-                (self.action.precond_pos == self.action.effect_add) ^
-                (self.action.precond_neg == self.action.effect_rem)
-            )
+            # A persistence, or maintenance, action, is one where the action
+            # has EITHER
+            # 1. A literal as a positive precondition, with the same literal as
+            #    the additive effect, OR
+            # 2. A literal as a negative precondition, with the same literal
+            #    removed in the effects.
+            # Additionally, judging from what we've read and seen in examples,
+            # the action should only cover ONE literal.
+            pos, neg = self.action.precond_pos, self.action.precond_neg
+            add, rem = self.action.effect_add, self.action.effect_rem
+            pos_add = pos and (pos == add) and (neg == rem == 0)
+            neg_rem = neg and (neg == rem) and (pos == add == 0)
+            check = pos_add ^ neg_rem
             if check:
-                combined = self.action.precond_pos + self.action.precond_neg
+                combined = pos + neg
                 one_bit_check = sum([int(n) for n in bin(combined)[2:]]) == 1
                 check = check and one_bit_check
-            self.is_persistent_ = check and self.action.name[0] in '+-'
+            self.is_persistent_ = check
+            # self.is_persistent_ = check and self.action.name[0] in '+-'
         return self.is_persistent_
 
 

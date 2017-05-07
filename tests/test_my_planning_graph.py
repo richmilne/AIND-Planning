@@ -103,7 +103,7 @@ class TestPlanningGraphMutex(unittest.TestCase):
         self.na1.parents.add(self.ns3)
         self.na2.parents.add(self.ns4)
 
-    @unittest.skip('Skipped test_serialize_mutex')
+    # @unittest.skip('Skipped test_serialize_mutex')
     def test_serialize_mutex(self):
         self.assertTrue(
             PlanningGraph.serialize_actions(self.pg, self.na1, self.na2),
