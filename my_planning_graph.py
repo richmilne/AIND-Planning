@@ -1,6 +1,6 @@
 from actions import Action
 from aimacode.search import Problem
-from lp_utils import decode_state, encode_state
+from lp_utils import decode_state, encode_state, check_precond_subset
 from functools import reduce, partial
 
 class PgNode():
@@ -357,18 +357,11 @@ class PlanningGraph():
         leveled = False
         level = 0
         self.s_levels.append(set())  # S0 set of s_nodes - empty to start
-        # For each fluent in the initial state, add the correct literal
-        # PgNode_s
-        # print('literals:', self.fs)
+        # For each fluent in the initial state, add correct literal PgNode_s
         for literal in self.fs[0]:
             self.s_levels[level].add(PgNode_s(literal, True))
-        print('Initial level:', self.s_levels[level])
-
-        # Not going to automatically add all negative fluents - only those
-        # which, when combined with the positive fluents, meet the preconditions
-        # for an action - see add action level.
-        #for literal in self.fs[1]:
-        #    self.s_levels[level].add(PgNode_s(literal, False))
+        for literal in self.fs[1]:
+            self.s_levels[level].add(PgNode_s(literal, False))
 
         # No mutexes at the first level
 
@@ -376,20 +369,13 @@ class PlanningGraph():
         # S-levels contain the same literals
         # i.e. until it is "leveled"
         while not leveled:
-            print()
-            print('Constructing level:', level)
             self.add_action_level(level)
             self.update_a_mutex(self.a_levels[level])
-
-            print('A Level:', level, self.a_levels[level])
 
             level += 1
             self.add_literal_level(level)
             self.update_s_mutex(self.s_levels[level])
 
-            print('S Level:', level-1, self.s_levels[level-1])
-            print('S Level:', level, self.s_levels[level])
-            print( self.s_levels[level] == self.s_levels[level-1] )
             if self.s_levels[level] == self.s_levels[level - 1]:
                 leveled = True
 
@@ -408,24 +394,15 @@ class PlanningGraph():
 
         return pos_state, neg_state
 
-    # We have to check each action precond bitmap separately - can't simply use
-    # check_precond(), because the previous state level represents a
-    # superposition of many, possibly mutex, fluents.
-    def return_matching_actions_pos(self, pos_state, first_level=False):
+    def return_matching_actions(self, pos_state, neg_state):
         applicable_actions = []
-        actions = self.problem.actions_list if first_level else self.all_actions
-        for action in actions:
-            match = (action.precond_pos & pos_state == action.precond_pos)
-            match = match or action.precond_pos == 0
-            if match:
+        for action in self.all_actions:
+            precond_pos, precond_neg = action.precond_pos, action.precond_neg
+            pos = check_precond_subset(precond_pos, pos_state)
+            neg = check_precond_subset(precond_neg, neg_state)
+            if pos and neg:
                 applicable_actions.append(action)
         return applicable_actions
-
-    def filter_matching_actions_neg(self, applicable_actions, neg_state):
-        new = [action for action in applicable_actions
-               if action.precond_neg & neg_state == neg_state
-               or action.precond_neg == 0]
-        return new
 
     def add_action_level(self, level):
         """Add an A (action) level to the Planning Graph
@@ -450,43 +427,26 @@ class PlanningGraph():
         #    instances in the appropriate s_level set.
 
         # 1. Get the state representation of this level
+        s_nodes_dict = dict([(hash(n), n) for n in self.s_levels[level]])
+        # print('Current nodes dict:')
+        # for item in sorted(s_nodes_dict.items()):
+        #     print(item)
         pos_state, neg_state = self.get_level_state(level)
 
         # 2. Find all actions whose preconditions match the state of this level.
-        actions = self.return_matching_actions_pos(pos_state, level==0)
-        if level:
-            actions = self.filter_matching_actions_neg(actions, neg_state)
-        else:
-            # At level 0, we implicitly assume all negative fluents are
-            # applicable. Here's where we add the actual neg fluent S-nodes to
-            # level 0 - but only if the neg fluent is a precondition for an
-            # action.
-            if actions:
-                neg_preconds = [action.precond_neg for action in actions]
-                print('Adding negative preconds:')
-                print([bin(n)[2:] for n in neg_preconds])
-                neg_precond = reduce(lambda x, y: x|y, neg_preconds)
-                print('OR-ed preconds:', bin(neg_precond)[2:])
-                neg_fluents = self.decode_state(neg_precond)
-                for literal in neg_fluents:
-                    self.s_levels[level].add(PgNode_s(literal, False))
+        actions = self.return_matching_actions(pos_state, neg_state)
 
         # Create new set to hold the A-nodes at this level
         self.a_levels.append(set())
 
         # 3. For each action, find all the S-nodes which match the pre-
         #    conditions of that action.
-        s_nodes_dict = dict([(hash(n), n) for n in self.s_levels[level]])
-        print('Current nodes dict:')
-        for item in sorted(s_nodes_dict.items()):
-            print(item)
         for action in actions:
             a_node = PgNode_a(action)
             for sign, bitmap in [(True, action.precond_pos),
                                 (False, action.precond_neg)]:
                 for fluent in self.decode_state(bitmap):
                     temp_s_node = PgNode_s(fluent, sign)
-                    print('created temp node:', repr(temp_s_node), hash(temp_s_node))
                     s_node = s_nodes_dict[hash(temp_s_node)]
                     # Wire up the s- and a-nodes
                     a_node.parents.add(s_node)
@@ -653,8 +613,8 @@ class PlanningGraph():
         # HINT: Look at the PgNode_s.__eq__ defines the notion of equivalence
         # for literal expression nodes, and the class tracks whether the
         # literal is positive or negative.
-        return (node_s1 == node_s2) and (node_s1.is_pos ^ node_s2.is_pos)
-
+        return ((node_s1.symbol == node_s2.symbol) and 
+                (node_s1.is_pos ^ node_s2.is_pos))
 
     def inconsistent_support_mutex(self, node_s1: PgNode_s, node_s2: PgNode_s):
         """Test a pair of state literals for mutual exclusion

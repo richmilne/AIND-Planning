@@ -85,7 +85,7 @@ class Action(object):
 
     def __repr__(self):
         bitmaps = (self.precond_pos, self.precond_neg,
-                   self.effect_add, self.effect_rem, self.effect_mask)
+                   self.effect_add, self.effect_rem)
         bin_strs = [bin(b)[2:] for b in bitmaps]
         width = max([len(b) for b in bin_strs])
         bin_strs = [b.zfill(width) for b in bin_strs]

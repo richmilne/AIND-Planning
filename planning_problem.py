@@ -23,9 +23,7 @@ class PlanningProblem(Problem):
 
         # Simpler to encode goal fluents as the pos and neg preconditions of an
         # action, so we can use the Action's precondition check methods.
-        self.goal_action = Action('GoalAction', all_fluents,
-                                  goal,
-                                  [[], []])
+        self.goal_action = Action('GoalAction', all_fluents, goal,  [[], []])
 
         self.all_fluents = all_fluents
         # self.initial_state = initial_state - not needed; initial state

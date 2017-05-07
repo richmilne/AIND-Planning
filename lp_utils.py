@@ -38,7 +38,7 @@ def check_precond_invert(precond, state):
     True
     """
     # if not precond or not state:
-    if not (precond & state):
+    if not (precond and state):
         return True
     return ((precond ^ state) & precond) == precond
 
