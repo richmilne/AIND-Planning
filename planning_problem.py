@@ -1,5 +1,5 @@
 from actions import Action
-from lp_utils import encode_state, decode_state
+from lp_utils import encode_state, decode_state, count_set_bits
 from aimacode.search import Node, Problem
 from my_planning_graph import PlanningGraph
 
@@ -95,5 +95,19 @@ class PlanningProblem(Problem):
         goal conditions by ignoring the preconditions required for an action
         to be executed."""
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-        count = 0
-        return count
+        # From discussion at:
+        # https://discussions.udacity.com/t/understanding-ignore-precondition-heuristic/225906/12
+        # The assumption is that 'the number of unsatisfied goals equals the
+        # minimum number of actions you would need to take to satisfy them all.'
+        # In other words, we ignore the possibility that one action can satisfy
+        # more than one goal, and simply count the number of unmet goals in the
+        # current state.
+        state = node.state
+        goal_pos = self.goal_action.precond_pos
+        goal_neg = self.goal_action.precond_neg
+        assert state and goal_pos
+
+        pos_goals_unmet = count_set_bits((goal_pos ^ state) & goal_pos)
+        neg_goals_unmet = count_set_bits(goal_neg & state)
+
+        return pos_goals_unmet + neg_goals_unmet

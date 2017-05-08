@@ -1,6 +1,7 @@
 from actions import Action
 from aimacode.search import Problem
 from lp_utils import decode_state, encode_state, check_precond_subset
+from lp_utils import count_set_bits
 from functools import reduce, partial
 
 class PgNode():
@@ -167,7 +168,7 @@ class PgNode_a(PgNode):
             check = pos_add ^ neg_rem
             if check:
                 combined = pos + neg
-                one_bit_check = sum([int(n) for n in bin(combined)[2:]]) == 1
+                one_bit_check = count_set_bits(combined) == 1
                 check = check and one_bit_check
             self.is_persistent_ = check
             # self.is_persistent_ = check and self.action.name[0] in '+-'

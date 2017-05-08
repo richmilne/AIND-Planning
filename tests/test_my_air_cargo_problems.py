@@ -119,7 +119,7 @@ class TestAirCargoMethods(unittest.TestCase):
         self.assertTrue('In(C1, P1)' in fluents)
         self.assertTrue('At(C1, SFO)' not in fluents)
 
-    @unittest.skip("Skip h_ignore_preconditions test.")
+    # @unittest.skip("Skip h_ignore_preconditions test.")
     def test_h_ignore_preconditions(self):
         n = Node(self.p1.initial)
         self.assertEqual(self.p1.h_ignore_preconditions(n),2)

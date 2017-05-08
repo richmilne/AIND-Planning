@@ -1,6 +1,10 @@
+def count_set_bits(num):
+    return sum([int(n) for n in bin(num)[2:]])
+
+
 def check_precond_subset(precond, state):
     """Check whether the bits set in precond are a subset of the state bits
-    
+
     >>> precond = 0b1010
     >>> check_precond_subset(precond, precond) # Exact match
     True
@@ -22,7 +26,7 @@ def check_precond_subset(precond, state):
 
 def check_precond_invert(precond, state):
     """Check whether the bits set in precond are reset in state
-    
+
     >>> precond = 0b1010
     >>> check_precond_invert(precond, 0b0101)  # Exact inverse
     True
